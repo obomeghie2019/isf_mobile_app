@@ -1,12 +1,10 @@
-# chocolatemeusem
+# ISF Mobile Application
 
-A new Flutter project.
+Iyekhei Sport Festival (ISF)
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
+This project is a for ISF which integrate the core activities of Iyekhei Sport Festival, Like Football, Marathon and other events
 
 - [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
 - [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
