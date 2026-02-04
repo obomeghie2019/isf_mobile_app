@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:isf_app/screens/registration_success_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class ContinueRegistrationScreen extends StatefulWidget {
   final String email;
@@ -130,16 +132,22 @@ class _ContinueRegistrationScreenState
                             onPressed: _isSubmitting
                                 ? null
                                 : () async {
+                                    if (!_formKey.currentState!.validate()) {
+                                      return;
+                                    }
+
                                     setState(() => _isSubmitting = true);
 
-                                    // Small delay for animation smoothness
-                                    await Future.delayed(
-                                        const Duration(milliseconds: 300));
+                                    try {
+                                      await _submitRegistration();
 
-                                    Navigator.pop(context); // close preview
-                                    await _submitRegistration();
-
-                                    setState(() => _isSubmitting = false);
+                                      // Close preview ONLY after successful submit
+                                      if (mounted) Navigator.pop(context);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _isSubmitting = false);
+                                      }
+                                    }
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
@@ -226,6 +234,29 @@ class _ContinueRegistrationScreenState
     'O+',
     'O-'
   ];
+  Future<Map<String, dynamic>> submitRegistration(
+      Map<String, dynamic> payload) async {
+    const String url =
+        "https://360globalnetwork.com.ng/isf2025/reg_athlete.php";
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } on TimeoutException {
+      return {"status": "timeout", "message": "Request timed out"};
+    } catch (e) {
+      return {"status": "error", "message": "Network error"};
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +330,7 @@ class _ContinueRegistrationScreenState
                         label: 'Phone',
                         value: _phoneController.text,
                         controller: _phoneController,
-                        icon: Icons.phone,
+                        icon: Icons.phone_in_talk,
                         readOnly: false),
 
                     // Read-only fields
@@ -370,14 +401,27 @@ class _ContinueRegistrationScreenState
                     // Emergency Contact
                     TextFormField(
                       controller: _emergencyContactController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 11,
                       decoration: InputDecoration(
                         labelText: 'Emergency Contact & Number',
-                        prefixIcon: const Icon(Icons.emergency),
+                        prefixIcon: const Icon(Icons.phone_in_talk),
                         border: OutlineInputBorder(),
+                        counterText: "", // hides the default character counter
                       ),
-                      validator: (value) => (value == null || value.isEmpty)
-                          ? 'Please enter emergency contact'
-                          : null,
+                      inputFormatters: [
+                        FilteringTextInputFormatter
+                            .digitsOnly, // only allow numbers
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter emergency contact';
+                        }
+                        if (value.length != 11) {
+                          return 'Contact number must be exactly 11 digits';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 20),
@@ -408,7 +452,7 @@ class _ContinueRegistrationScreenState
                           ? _tshirtSizeController.text
                           : null,
                       decoration: InputDecoration(
-                        labelText: 'T-Shirt Size',
+                        labelText: 'Bib Size',
                         prefixIcon: const Icon(Icons.photo_size_select_large),
                         border: OutlineInputBorder(),
                       ),
@@ -418,7 +462,7 @@ class _ContinueRegistrationScreenState
                           .toList(),
                       onChanged: (value) => _tshirtSizeController.text = value!,
                       validator: (value) =>
-                          value == null ? 'Please select t-shirt size' : null,
+                          value == null ? 'Please select bib size' : null,
                     ),
 
                     const SizedBox(height: 20),
@@ -552,6 +596,9 @@ class _ContinueRegistrationScreenState
     final TextEditingController controller0 =
         controller ?? TextEditingController(text: value);
 
+    // Check if this is the Phone field
+    final bool isPhoneField = label.toLowerCase().contains('phone');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -561,15 +608,24 @@ class _ContinueRegistrationScreenState
         TextFormField(
           controller: controller0,
           readOnly: readOnly,
+          keyboardType:
+              isPhoneField ? TextInputType.number : TextInputType.text,
+          maxLength: isPhoneField ? 11 : null,
+          inputFormatters:
+              isPhoneField ? [FilteringTextInputFormatter.digitsOnly] : null,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey[700]),
             border: OutlineInputBorder(),
             filled: true,
             fillColor: readOnly ? Colors.grey[100] : Colors.white,
+            counterText: isPhoneField ? "" : null, // hide counter for phone
           ),
           validator: (val) {
             if (!readOnly && (val == null || val.isEmpty)) {
               return 'Please enter $label';
+            }
+            if (isPhoneField && val != null && val.length != 11) {
+              return 'Phone number must be exactly 11 digits';
             }
             return null;
           },
@@ -625,7 +681,7 @@ class _ContinueRegistrationScreenState
 
       final data = jsonDecode(response.body);
 
-      if (data['success']) {
+      if (data['status'] == 'success') {
         Get.snackbar(
           "Registration Complete!",
           data['message'],
@@ -638,8 +694,11 @@ class _ContinueRegistrationScreenState
         Future.delayed(const Duration(seconds: 2), () {
           Get.offAll(() => RegistrationSuccessScreen(
                 name: _nameController.text,
-                reference: widget.reference,
+                appNo: widget.regNo,
                 category: _selectedCategory ?? 'N/A',
+                eventName: data['event_name'] ?? 'N/A',
+                eventDate: data['event_date'] ?? 'N/A',
+                venue: data['venue'] ?? 'N/A',
               ));
         });
       } else {

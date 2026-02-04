@@ -4,6 +4,8 @@
     <!-- Internet Permission -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+
+
     <application
         android:label="ISF Mobile App"
         android:icon="@mipmap/ic_launcher">
