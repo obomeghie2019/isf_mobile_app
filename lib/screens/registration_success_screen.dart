@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:screenshot/screenshot.dart';
-import 'package:path_provider/path_provider.dart';
 
 class RegistrationSuccessScreen extends StatefulWidget {
   final String name;
@@ -182,7 +181,7 @@ class _RegistrationSuccessScreenState extends State<RegistrationSuccessScreen> {
                   ),
                   const SizedBox(height: 25),
                   GestureDetector(
-                    onTap: isSaving ? null : captureScreen,
+                    onTap: () => Get.offAll(() => MarathonRegistrationScreen()),
                     child: Container(
                       width: double.infinity,
                       height: 52,
@@ -221,7 +220,7 @@ class _RegistrationSuccessScreenState extends State<RegistrationSuccessScreen> {
                                   Icon(Icons.camera_alt, color: Colors.white),
                                   SizedBox(width: 10),
                                   Text(
-                                    'Save Screenshot',
+                                    'Register Another Person',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -235,20 +234,14 @@ class _RegistrationSuccessScreenState extends State<RegistrationSuccessScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  TextButton(
-                    onPressed: () {
-                      Get.offAll(() => MarathonRegistrationScreen());
-                    },
-                    child: const Text(
-                      'Register Another Person',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  Text(
+                      "Please keep a screenshot of this page for your records.",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Color.fromARGB(255, 19, 224, 101),
+                          fontSize: 16)),
+                  const SizedBox(height: 25),
                   TextButton(
                     onPressed: () {
                       Get.offAll(() => HomeCarouselPage());

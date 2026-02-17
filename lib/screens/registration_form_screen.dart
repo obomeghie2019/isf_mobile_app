@@ -315,268 +315,287 @@ class _ContinueRegistrationScreenState
                   style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 20),
 
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Editable fields
-                    _buildTextField(
+              SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // Editable fields
+                      _buildTextField(
                         label: 'Full Name',
                         value: _nameController.text,
                         controller: _nameController,
                         icon: Icons.person,
-                        readOnly: false),
-                    _buildTextField(
+                        readOnly: false,
+                      ),
+
+                      _buildTextField(
                         label: 'Phone',
                         value: _phoneController.text,
                         controller: _phoneController,
                         icon: Icons.phone_in_talk,
-                        readOnly: false),
+                        readOnly: false,
+                      ),
 
-                    // Read-only fields
-                    _buildTextField(
-                        label: 'Email', value: widget.email, icon: Icons.email),
-                    _buildTextField(
+                      // Read-only fields
+                      _buildTextField(
+                        label: 'Email',
+                        value: widget.email,
+                        icon: Icons.email,
+                      ),
+
+                      _buildTextField(
                         label: 'Registration No.',
                         value: widget.regNo,
-                        icon: Icons.confirmation_number),
+                        icon: Icons.confirmation_number,
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // Date of Birth
-                    GestureDetector(
-                      onTap: () => _selectDate(context),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: _dobController,
-                          decoration: InputDecoration(
-                            labelText: 'Date of Birth',
-                            prefixIcon: const Icon(Icons.calendar_today),
-                            border: OutlineInputBorder(),
+                      // Date of Birth
+                      GestureDetector(
+                        onTap: () => _selectDate(context),
+                        child: AbsorbPointer(
+                          child: TextFormField(
+                            controller: _dobController,
+                            decoration: const InputDecoration(
+                              labelText: 'Date of Birth',
+                              prefixIcon: Icon(Icons.calendar_today),
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Please select date of birth'
+                                : null,
                           ),
-                          validator: (value) => (value == null || value.isEmpty)
-                              ? 'Please select date of birth'
-                              : null,
                         ),
                       ),
-                    ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // Gender
-                    DropdownButtonFormField<String>(
-                      value: _selectedGender,
-                      decoration: InputDecoration(
-                        labelText: 'Gender',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['Male', 'Female'].map((gender) {
-                        return DropdownMenuItem(
-                            value: gender, child: Text(gender));
-                      }).toList(),
-                      onChanged: (value) =>
-                          setState(() => _selectedGender = value),
-                      validator: (value) =>
-                          value == null ? 'Please select gender' : null,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Address
-                    TextFormField(
-                      controller: _lgaController,
-                      decoration: InputDecoration(
-                        labelText: 'Local Government Area',
-                        prefixIcon: const Icon(Icons.home),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => (value == null || value.isEmpty)
-                          ? 'Please Enter Local Government Area'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Emergency Contact
-                    TextFormField(
-                      controller: _emergencyContactController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 11,
-                      decoration: InputDecoration(
-                        labelText: 'Emergency Contact & Number',
-                        prefixIcon: const Icon(Icons.phone_in_talk),
-                        border: OutlineInputBorder(),
-                        counterText: "", // hides the default character counter
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter
-                            .digitsOnly, // only allow numbers
-                      ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter emergency contact';
-                        }
-                        if (value.length != 11) {
-                          return 'Contact number must be exactly 11 digits';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Race Category
-                    DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Race Category',
-                        prefixIcon: const Icon(Icons.flag),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: categories
-                          .map((cat) =>
-                              DropdownMenuItem(value: cat, child: Text(cat)))
-                          .toList(),
-                      onChanged: (value) =>
-                          setState(() => _selectedCategory = value),
-                      validator: (value) =>
-                          value == null ? 'Please select race category' : null,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // T-Shirt Size
-                    DropdownButtonFormField<String>(
-                      value: _tshirtSizeController.text.isNotEmpty
-                          ? _tshirtSizeController.text
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: 'Bib Size',
-                        prefixIcon: const Icon(Icons.photo_size_select_large),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: tshirtSizes
-                          .map((size) =>
-                              DropdownMenuItem(value: size, child: Text(size)))
-                          .toList(),
-                      onChanged: (value) => _tshirtSizeController.text = value!,
-                      validator: (value) =>
-                          value == null ? 'Please select bib size' : null,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Blood Group (Optional)
-                    DropdownButtonFormField<String>(
-                      value: _bloodGroupController.text.isNotEmpty
-                          ? _bloodGroupController.text
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: 'Blood Group (Optional)',
-                        prefixIcon: const Icon(Icons.bloodtype),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: bloodGroups
-                          .map((group) => DropdownMenuItem(
-                              value: group, child: Text(group)))
-                          .toList(),
-                      onChanged: (value) => _bloodGroupController.text = value!,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Medical Conditions (Optional)
-                    TextFormField(
-                      controller: _medicalConditionsController,
-                      decoration: InputDecoration(
-                        labelText: 'Medical Conditions/Allergies (Optional)',
-                        prefixIcon: const Icon(Icons.medical_services),
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Declaration Checkbox
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Checkbox(
-                          value: _hasAgreed,
-                          onChanged: (value) {
-                            setState(() {
-                              _hasAgreed = value ?? false;
-                            });
-                          },
+                      // Gender
+                      DropdownButtonFormField<String>(
+                        value: _selectedGender,
+                        decoration: const InputDecoration(
+                          labelText: 'Gender',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
                         ),
-                        const Expanded(
-                          child: Text(
-                            'I declare that all information provided is true and accurate. '
-                            'I understand the risks involved in marathon running and participate at my own risk.',
-                            textAlign: TextAlign.justify,
-                            style: TextStyle(
-                              fontSize: 14,
+                        items: ['Male', 'Female']
+                            .map((gender) => DropdownMenuItem(
+                                  value: gender,
+                                  child: Text(gender),
+                                ))
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => _selectedGender = value),
+                        validator: (value) =>
+                            value == null ? 'Please select gender' : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Address
+                      TextFormField(
+                        controller: _lgaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Local Government Area',
+                          prefixIcon: Icon(Icons.home),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Please Enter Local Government Area'
+                            : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Emergency Contact
+                      TextFormField(
+                        controller: _emergencyContactController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 11,
+                        decoration: const InputDecoration(
+                          labelText: 'Emergency Contact & Number',
+                          prefixIcon: Icon(Icons.phone_in_talk),
+                          border: OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter emergency contact';
+                          }
+                          if (value.length != 11) {
+                            return 'Contact number must be exactly 11 digits';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Race Category
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Race Category',
+                          prefixIcon: Icon(Icons.flag),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: categories
+                            .map((cat) =>
+                                DropdownMenuItem(value: cat, child: Text(cat)))
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => _selectedCategory = value),
+                        validator: (value) => value == null
+                            ? 'Please select race category'
+                            : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Bib Size
+                      DropdownButtonFormField<String>(
+                        value: _tshirtSizeController.text.isNotEmpty
+                            ? _tshirtSizeController.text
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Bib Size',
+                          prefixIcon: Icon(Icons.photo_size_select_large),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: tshirtSizes
+                            .map((size) => DropdownMenuItem(
+                                value: size, child: Text(size)))
+                            .toList(),
+                        onChanged: (value) =>
+                            _tshirtSizeController.text = value!,
+                        validator: (value) =>
+                            value == null ? 'Please select bib size' : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Blood Group (Optional)
+                      DropdownButtonFormField<String>(
+                        value: _bloodGroupController.text.isNotEmpty
+                            ? _bloodGroupController.text
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Blood Group (Optional)',
+                          prefixIcon: Icon(Icons.bloodtype),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: bloodGroups
+                            .map((group) => DropdownMenuItem(
+                                  value: group,
+                                  child: Text(group),
+                                ))
+                            .toList(),
+                        onChanged: (value) =>
+                            _bloodGroupController.text = value!,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Medical Conditions
+                      TextFormField(
+                        controller: _medicalConditionsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Medical Conditions/Allergies (Optional)',
+                          prefixIcon: Icon(Icons.medical_services),
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      // Declaration
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _hasAgreed,
+                            onChanged: (value) =>
+                                setState(() => _hasAgreed = value ?? false),
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'I declare that all information provided is true and accurate. '
+                              'I understand the risks involved in marathon running and participate at my own risk.',
+                              textAlign: TextAlign.justify,
+                              style: TextStyle(fontSize: 14),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
 
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: _hasAgreed
-                                ? [
-                                    const Color.fromARGB(255, 59, 59, 223),
-                                    const Color.fromARGB(255, 1, 44, 3),
-                                  ]
-                                : [
-                                    Colors.grey.shade400,
-                                    Colors.grey.shade500,
-                                  ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _hasAgreed
-                              ? _showPreviewDialog
-                              : null, // Disable if not agreed
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.transparent, // important for gradient
-                            shadowColor:
-                                Colors.transparent, // remove default shadow
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      // Preview Button (unchanged)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: _hasAgreed
+                                  ? [
+                                      Color.fromARGB(255, 59, 59, 223),
+                                      Color.fromARGB(255, 1, 44, 3),
+                                    ]
+                                  : [
+                                      Colors.grey,
+                                      Colors.grey,
+                                    ],
                             ),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.preview,
-                                  color: Colors.white), // registration icon
-                              SizedBox(width: 10),
-                              Text(
-                                'Preview',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                          child: ElevatedButton(
+                            onPressed: _hasAgreed
+                                ? () {
+                                    if (!_formKey.currentState!.validate()) {
+                                      Get.snackbar(
+                                        'Incomplete Form',
+                                        'Please fill all required fields correctly',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.orange,
+                                        colorText: Colors.white,
+                                      );
+                                      return;
+                                    }
+                                    _showPreviewDialog();
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.preview, color: Colors.white),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Preview',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
