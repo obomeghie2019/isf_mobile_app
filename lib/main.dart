@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:isf_app/isffixtures.dart';
 import 'package:isf_app/isfnews.dart';
 import 'package:isf_app/isfstanding.dart';
@@ -13,7 +15,6 @@ import 'package:get/get.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await MobileAds.instance.initialize();
   runApp(const ISFApp());
 }
@@ -39,53 +40,79 @@ class HomeCarouselPage extends StatefulWidget {
 }
 
 class _HomeCarouselPageState extends State<HomeCarouselPage> {
-  int _currentIndex = 0; // Tracks the selected tab
+  int _currentIndex = 0;
   late StreamSubscription<List<ConnectivityResult>> _subscription;
-  bool _isConnected = true; // Default to connected
+  bool _isConnected = true;
+
+  // ── Marathon registration state ──
+  bool _marathonOpen = false; // false = closed, true = open
+  bool _loadingMarathon = true; // shows shimmer while fetching
+
+  // ── CHANGE THIS to your actual API URL ──
+  static const String _apiUrl =
+      'https://360globalnetwork.com.ng/isf2025/mobile_settings.php';
 
   @override
   void initState() {
     super.initState();
+    _fetchMarathonStatus();
 
-    // Listen for network changes (new API returns a List<ConnectivityResult>)
-    _subscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) {
-      // Consider connected if any result is not 'none'
-      bool hasInternet = results.any(
-        (result) => result != ConnectivityResult.none,
-      );
-      if (_isConnected != hasInternet) {
+    _subscription = Connectivity().onConnectivityChanged.listen(
+      (List<ConnectivityResult> results) {
+        bool hasInternet = results.any((r) => r != ConnectivityResult.none);
+        if (_isConnected != hasInternet) {
+          setState(() => _isConnected = hasInternet);
+          _showNetworkStatusPopup();
+          // Re-fetch when internet is restored
+          if (hasInternet) _fetchMarathonStatus();
+        }
+      },
+    );
+  }
+
+  // ── Fetch marathon_registration from your PHP API ──
+  Future<void> _fetchMarathonStatus() async {
+    setState(() => _loadingMarathon = true);
+    try {
+      final response = await http
+          .get(Uri.parse(_apiUrl))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
         setState(() {
-          _isConnected = hasInternet;
+          _marathonOpen = (data['marathon_registration'] == 'open');
+          _loadingMarathon = false;
         });
-        _showNetworkStatusPopup();
+      } else {
+        setState(() => _loadingMarathon = false);
       }
-    });
+    } catch (e) {
+      // Network error – default to closed for safety
+      setState(() => _loadingMarathon = false);
+    }
   }
 
   void _showNetworkStatusPopup() {
     final message =
         _isConnected ? "Internet Restored!" : "No Internet Connection!";
     final color = _isConnected ? Colors.green : Colors.red;
-
     Get.snackbar(
-      "Network Status", // Title
-      message, // Message
+      "Network Status",
+      message,
       snackPosition: SnackPosition.TOP,
       backgroundColor: color,
       colorText: Colors.white,
-      duration: Duration(seconds: 3),
+      duration: const Duration(seconds: 3),
     );
   }
 
   @override
   void dispose() {
-    _subscription.cancel(); // Dispose of listener to prevent memory leaks
+    _subscription.cancel();
     super.dispose();
   }
 
-  // Bottom Navigation Bar Items
   final List<BottomNavigationBarItem> _bottomNavItems = const [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
     BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Live'),
@@ -99,7 +126,6 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 59, 59, 223),
-        //title: const Text('Iyekhei Sport Festival (ISF)'),
       ),
       drawer: Drawer(
         child: ListView(
@@ -107,116 +133,80 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
           children: [
             DrawerHeader(
               decoration:
-                  BoxDecoration(color: const Color.fromARGB(255, 59, 59, 223)),
-              child: Text(
+                  const BoxDecoration(color: Color.fromARGB(255, 59, 59, 223)),
+              child: const Text(
                 'MENU',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
             ListTile(
-              leading: Icon(Icons.home,
-                  color: const Color.fromARGB(255, 59, 59, 223)),
-              title: Text('HOME'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-              },
+              leading: const Icon(Icons.home,
+                  color: Color.fromARGB(255, 59, 59, 223)),
+              title: const Text('HOME'),
+              onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: Icon(Icons.info,
-                  color: const Color.fromARGB(255, 59, 59, 223)),
-              title: Text('ABOUT ISF'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AboutUs()),
-                );
-              },
+              leading: const Icon(Icons.info,
+                  color: Color.fromARGB(255, 59, 59, 223)),
+              title: const Text('ABOUT ISF'),
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => AboutUs())),
             ),
-            ListTile(
-              leading: Icon(Icons.event,
-                  color: const Color.fromARGB(255, 59, 59, 223)),
-              title: Text('ISF MARATHON'),
-              onTap: () {
-                // Handle navigation to Events
-                Navigator.push(
+            // ── Marathon drawer item: only shown when OPEN ──
+            if (_marathonOpen)
+              ListTile(
+                leading: const Icon(Icons.event,
+                    color: Color.fromARGB(255, 59, 59, 223)),
+                title: const Text('ISF MARATHON'),
+                onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        MarathonRegistrationScreen(), // Ensure this class is defined below or imported
-                  ),
-                );
-              },
-            ),
-            //Ads Banner
-            // BannerAdWidget(
-            // adUnitId: 'ca-app-pub-8686875793330353/6579589869',
-            // ),
-            ListTile(
-              leading: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.sports_soccer,
-                      color: const Color.fromARGB(255, 59, 59, 223))
-                ],
+                      builder: (_) => MarathonRegistrationScreen()),
+                ),
               ),
-              title: Text('ISF FOOTBALL'),
-              subtitle: Text(
-                'Fixtures,Table Standing, Scores and Updates',
+            ListTile(
+              leading: const Icon(Icons.sports_soccer,
+                  color: Color.fromARGB(255, 59, 59, 223)),
+              title: const Text('ISF FOOTBALL'),
+              subtitle: const Text(
+                'Fixtures, Table Standing, Scores and Updates',
                 style: TextStyle(color: Colors.black, fontSize: 10),
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        WebViewScreen(), // Ensure this class is defined below or imported
-                  ),
-                );
-              },
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => WebViewScreen())),
             ),
             ListTile(
-              leading: Icon(Icons.contact_support,
-                  color: const Color.fromARGB(255, 59, 59, 223)),
-              title: Text('CONTACT US'),
-              onTap: () {
-                // Handle navigation to Contact Us
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AboutUs(), // Ensure this class is defined below or imported
-                  ),
-                );
-              },
+              leading: const Icon(Icons.contact_support,
+                  color: Color.fromARGB(255, 59, 59, 223)),
+              title: const Text('CONTACT US'),
+              onTap: () => Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => AboutUs())),
             ),
           ],
         ),
       ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            _buildAlertCard(),
-            const SizedBox(height: 16),
-            _buildServiceGrid(),
-            const SizedBox(height: 16),
-            _buildInviteBonusCard(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _fetchMarathonStatus, // pull-to-refresh re-checks status
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 16),
+              _buildAlertCard(),
+              const SizedBox(height: 16),
+              _buildServiceGrid(),
+              const SizedBox(height: 16),
+              // ── Marathon card: controlled by toggle ──
+              _buildMarathonCard(),
+            ],
+          ),
         ),
       ),
-
-      //Ads Banner
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          // Add navigation logic here (e.g., using Navigator.push)
-        },
+        onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.black,
         selectedItemColor: const Color.fromARGB(255, 59, 59, 223),
@@ -226,6 +216,7 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
     );
   }
 
+  // ── Banner card (unchanged) ──
   Widget _buildAlertCard() {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -235,13 +226,14 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
         child: Image.asset(
           'assets/images/isfbanner.png',
           width: double.infinity,
-          height: 150, // Increased height for better visibility
+          height: 150,
           fit: BoxFit.cover,
         ),
       ),
     );
   }
 
+  // ── Service grid (unchanged) ──
   Widget _buildServiceGrid() {
     return Card(
       color: const Color.fromARGB(255, 14, 16, 25),
@@ -256,44 +248,28 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
           children: [
             _buildServiceIcon(Icons.tv, 'ISF Live Scores', () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => WebViewScreen()),
-              );
+                  context, MaterialPageRoute(builder: (_) => WebViewScreen()));
             }),
             _buildServiceIcon(Icons.event_sharp, 'ISF Statistics', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ISFstatisticscreen()),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => ISFstatisticscreen()));
             }),
             _buildServiceIcon(Icons.sports_esports, 'ISF Games', () {}),
-            _buildServiceIcon(
-              Icons.event_available,
-              'ISF Fixtures',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ISFfixtureScreen()),
-                );
-              },
-            ),
+            _buildServiceIcon(Icons.event_available, 'ISF Fixtures', () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => ISFfixtureScreen()));
+            }),
             _buildServiceIcon(Icons.leaderboard, 'ISF Standings', () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ISFStanding()),
-              );
+                  context, MaterialPageRoute(builder: (_) => ISFStanding()));
             }),
             _buildServiceIcon(Icons.newspaper_sharp, 'ISF Updates', () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ISFNewsScreen()),
-              );
+                  context, MaterialPageRoute(builder: (_) => ISFNewsScreen()));
             }),
             _buildServiceIcon(Icons.info, 'About ISF', () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AboutUs()),
-              );
+                  context, MaterialPageRoute(builder: (_) => AboutUs()));
             }),
             _buildServiceIcon(Icons.more_horiz, 'More', () {}),
           ],
@@ -303,10 +279,7 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
   }
 
   Widget _buildServiceIcon(
-    IconData icon,
-    String label,
-    VoidCallback onPressed,
-  ) {
+      IconData icon, String label, VoidCallback onPressed) {
     return GestureDetector(
       onTap: onPressed,
       child: SizedBox(
@@ -332,36 +305,53 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
     );
   }
 
-  Widget _buildInviteBonusCard() {
-    return Card(
-      color: const Color.fromARGB(255, 59, 59, 223),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            const Icon(Icons.campaign, color: Colors.white),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Are you ready for 6KM Race?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+  // ── Marathon card – dynamically shows OPEN or CLOSED state ──
+  Widget _buildMarathonCard() {
+    // While loading show a shimmer-style placeholder
+    if (_loadingMarathon) {
+      return Card(
+        color: const Color.fromARGB(255, 59, 59, 223),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+        child: const Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    // ── REGISTRATION OPEN ──
+    if (_marathonOpen) {
+      return Card(
+        color: const Color.fromARGB(255, 59, 59, 223),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              const Icon(Icons.campaign, color: Colors.white),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Are you ready for 6KM Race?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: DecoratedBox(
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [
                           Color.fromARGB(255, 8, 104, 54),
-                          Color.fromARGB(255, 3, 20, 54)
+                          Color.fromARGB(255, 3, 20, 54),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -376,15 +366,11 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      //Proceed To Pay
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MarathonRegistrationScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => MarathonRegistrationScreen()),
+                      ),
                       child: const Text(
                         'Register',
                         style: TextStyle(
@@ -392,9 +378,69 @@ class _HomeCarouselPageState extends State<HomeCarouselPage> {
                             fontSize: 14,
                             fontWeight: FontWeight.bold),
                       ),
-                    )),
+                    ),
+                  ),
+                ),
               ),
-            )
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── REGISTRATION CLOSED ──
+    return Card(
+      color: const Color.fromARGB(255, 59, 59, 223),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.lock_outline,
+                  color: Colors.redAccent, size: 28),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Marathon Registration',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'ISF Marathon Registration is closed!',
+                    style: TextStyle(color: Colors.grey, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.redAccent, width: 1),
+              ),
+              child: const Text(
+                'CLOSED',
+                style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11),
+              ),
+            ),
           ],
         ),
       ),
